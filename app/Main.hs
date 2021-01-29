@@ -1,7 +1,7 @@
 module Main (main) where
 
-import Utf8Monoid (someFunc)
+import Utf8Monoid ()
 
 
 main :: IO ()
-main = someFunc
+main = pure ()

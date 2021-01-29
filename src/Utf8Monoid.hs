@@ -17,7 +17,7 @@ module Utf8Monoid
 
 import Data.Text.Internal.Encoding.Utf8 (validate2, validate3, validate4)
 import Test.QuickCheck ( Arbitrary(arbitrary) )
-import Test.QuickCheck.Gen (Gen, chooseBoundedIntegral, oneof)
+import Test.QuickCheck.Gen (Gen, choose, oneof)
 import Test.QuickCheck.Modifiers (OrderedList(..), NonNegative(..))
 import Data.Word (Word8)
 import Data.List (foldl')
@@ -52,7 +52,7 @@ data Continuations
   deriving stock (Show, Eq)
 
 contByte :: Gen Word8
-contByte = chooseBoundedIntegral (0b1000_0000, 0b1011_1111)
+contByte = choose (0b1000_0000, 0b1011_1111)
 
 instance Arbitrary Continuations where
   arbitrary = oneof
@@ -78,9 +78,9 @@ data Prefix
 instance Arbitrary Prefix where
   arbitrary = oneof
     [ pure ZeroP
-    , OneP   <$> chooseBoundedIntegral (0b1100_0000, 0b1101_1111)
-    , TwoP   <$> chooseBoundedIntegral (0b1110_0000, 0b1110_1111) <*> contByte
-    , ThreeP <$> chooseBoundedIntegral (0b1111_0000, 0b1111_1111) <*> contByte <*> contByte
+    , OneP   <$> choose (0b1100_0010, 0b1101_1111)
+    , TwoP   <$> choose (0b1110_0001, 0b1110_1111) <*> contByte
+    , ThreeP <$> choose (0b1111_0001, 0b1111_0111) <*> contByte <*> contByte
     ]
 
 prefixSize :: Prefix -> Int
@@ -137,8 +137,9 @@ instance Semigroup Utf8Monoid where
                   (leftCont,  rightPfx,    es) -> errors leftCont es rightPfx
 
     in case (a,b) of
-        (Valid 0,                      r                             ) -> r
-        (l,                            Valid 0                       ) -> l
+        (l,                            r                             )
+          | lengthOf l == 0 -> r
+          | lengthOf r == 0 -> l
         (Valid _,                      Valid _                       ) -> Valid totalLength
         (Errors _ _        _  ZeroP,   Valid _                       ) -> ok
         (Errors _ leftCont ls pfx,     Valid _                       ) -> leftHasUnmatchedPrefix leftCont pfx ls [] ZeroP
